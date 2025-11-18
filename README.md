@@ -1,29 +1,25 @@
 # LangChain Chatbot with Retrieval‑Augmented Generation (RAG)
 
-## Overview
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 
-This repository provides a **minimal, production‑ready chatbot** built on top of **[LangChain](https://github.com/langchain-ai/langchain)**.  It demonstrates how to combine:
+A minimal, production‑ready example of a **chatbot** built on top of **LangChain** that leverages **Retrieval‑Augmented Generation (RAG)**. The repository demonstrates how to:
 
-- **Large Language Models (LLMs)** for natural‑language generation
-- **Vector stores** for semantic retrieval
-- **Retrieval‑Augmented Generation (RAG)** to ground responses in external knowledge
-
-The bot is packaged as a simple FastAPI service, but the core logic is framework‑agnostic and can be reused in other environments (CLI, Streamlit, etc.).
+- Connect a large language model (LLM) to a vector store for document retrieval.
+- Build a LangChain **ConversationalRetrievalChain** that keeps context across turns.
+- Deploy the bot locally (CLI) or as a simple FastAPI endpoint.
+- Run end‑to‑end tests and contribute improvements.
 
 ---
 
 ## Table of Contents
 
 - [Features](#features)
-- [Architecture Diagram](#architecture-diagram)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Running the API](#running-the-api)
-- [Usage](#usage)
-  - [API Endpoints](#api-endpoints)
-  - [Example Requests](#example-requests)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
 - [Configuration](#configuration)
+- [Running the Bot](#running-the-bot)
+- [Project Structure](#project-structure)
 - [Testing](#testing)
 - [Contributing](#contributing)
 - [License](#license)
@@ -32,41 +28,24 @@ The bot is packaged as a simple FastAPI service, but the core logic is framework
 
 ## Features
 
-- **RAG pipeline** using LangChain `Retriever` + `LLMChain`
-- **Pluggable vector stores** (currently supports **FAISS**, **Chroma**, **Pinecone**)
-- **Prompt templating** for consistent system messages
-- **Streaming responses** via FastAPI `EventSourceResponse`
-- **Docker support** for reproducible deployments
-- **Extensible architecture** – swap LLMs, retrievers, or storage back‑ends with a single line change
+- **LangChain** integration with a configurable LLM (OpenAI, Anthropic, Ollama, …).
+- **RAG** pipeline using **FAISS** (or any other `VectorStore` compatible with LangChain).
+- Stateful chat with a **ConversationBufferMemory**.
+- Simple CLI for quick prototyping.
+- Optional FastAPI server for HTTP‑based interaction.
+- Type‑annotated, PEP‑8 compliant code base.
 
 ---
 
-## Architecture Diagram
+## Prerequisites
 
-```
-+----------------+      +----------------+      +-------------------+
-|   User Input   | ---> |   FastAPI      | ---> | LangChain RAG     |
-| (HTTP/WS)      |      |   Endpoint     |      |  ├─ Retriever     |
-+----------------+      +----------------+      |  └─ LLMChain       |
-                                                +-------------------+
-```
-
-1. **FastAPI** receives the request and forwards the user query to the LangChain RAG pipeline.
-2. The **Retriever** searches a vector store for the most relevant documents.
-3. The **LLMChain** combines the retrieved context with a system prompt and generates a response.
-4. The response is streamed back to the client.
+- Python **3.9** or newer.
+- An API key for the LLM you intend to use (e.g., `OPENAI_API_KEY`).
+- Optional: `git`, `make` (for convenience scripts).
 
 ---
 
-## Getting Started
-
-### Prerequisites
-
-- Python **3.10** or newer
-- An OpenAI API key (or another LLM provider supported by LangChain)
-- Optional: Docker & Docker‑Compose if you prefer containerised execution
-
-### Installation
+## Installation
 
 ```bash
 # Clone the repository
@@ -77,99 +56,131 @@ cd langchain-chatbot
 python -m venv .venv
 source .venv/bin/activate  # on Windows use `.venv\Scripts\activate`
 
-# Install dependencies
+# Install the core dependencies
 pip install -r requirements.txt
 ```
 
-If you want to use **FAISS** (the default local vector store), ensure you have the required compiled libraries:
-
-```bash
-pip install "faiss-cpu>=1.7.4"
-```
-
-### Running the API
-
-```bash
-# Export your OpenAI key (or set it in a .env file)
-export OPENAI_API_KEY='sk-...'
-
-# Start the FastAPI server
-uvicorn app.main:app --reload
-```
-
-The service will be available at `http://127.0.0.1:8000`.
-
----
-
-## Usage
-
-### API Endpoints
-
-| Method | Path               | Description                              |
-|--------|--------------------|------------------------------------------|
-| POST   | `/chat`            | Send a user message and receive a reply  |
-| GET    | `/health`          | Simple health‑check endpoint              |
-
-### Example Request (cURL)
-
-```bash
-curl -X POST http://127.0.0.1:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Explain the difference between supervised and unsupervised learning."}'
-```
-
-The response is streamed JSON lines of the form:
-
-```json
-{"content": "Supervised learning ..."}
-```
+> **Tip**: The `requirements.txt` pins versions that are known to work together. If you need the latest LangChain features, upgrade with `pip install -U langchain` and adjust the code accordingly.
 
 ---
 
 ## Configuration
 
-All configurable values are read from environment variables (see `.env.example`).  Common options include:
+All configurable values are read from environment variables. Create a `.env` file at the project root (it is ignored by Git) and populate it with the keys you need:
 
-- `OPENAI_API_KEY` – your OpenAI key
-- `LLM_MODEL` – e.g., `gpt-3.5-turbo` (default)
-- `VECTOR_STORE` – `faiss`, `chroma`, or `pinecone`
-- `EMBEDDING_MODEL` – e.g., `text-embedding-ada-002`
-- `TOP_K_RETRIEVAL` – number of documents to fetch (default: `4`)
+```dotenv
+# LLM configuration (choose one)
+OPENAI_API_KEY=sk-...
+# ANTHROPIC_API_KEY=...
+# OLLAMA_BASE_URL=http://localhost:11434
 
-You can override any of these at runtime or by editing the `.env` file.
+# Vector store settings – FAISS uses a local index file
+FAISS_INDEX_PATH=./data/faiss_index
+
+# Optional FastAPI settings
+HOST=0.0.0.0
+PORT=8000
+```
+
+The application loads the `.env` file automatically via **python‑dotenv**.
+
+---
+
+## Running the Bot
+
+### 1️⃣ CLI Mode (quick test)
+
+```bash
+python -m chatbot.cli
+```
+
+You will be prompted for a question; the bot will retrieve relevant chunks, generate a response, and keep the conversation context.
+
+### 2️⃣ FastAPI Server
+
+```bash
+uvicorn chatbot.api:app --host $HOST --port $PORT
+```
+
+The server exposes a single endpoint:
+
+- `POST /chat` – body `{ "question": "..." }`
+- Returns `{ "answer": "...", "source_documents": [...] }`
+
+You can test it with `curl` or any HTTP client:
+
+```bash
+curl -X POST http://localhost:8000/chat \
+     -H 'Content-Type: application/json' \
+     -d '{"question": "What is Retrieval‑Augmented Generation?"}'
+```
+
+---
+
+## Project Structure
+
+```
+langchain-chatbot/
+├─ chatbot/                 # Core package
+│   ├─ __init__.py
+│   ├─ config.py            # Environment handling
+│   ├─ retrieval.py         # Vector store & retriever setup
+│   ├─ chain.py             # ConversationalRetrievalChain builder
+│   ├─ cli.py               # Simple command‑line interface
+│   └─ api.py               # FastAPI endpoint
+├─ data/                    # Persisted FAISS index, sample docs
+├─ tests/                   # Unit & integration tests
+│   └─ test_chatbot.py
+├─ .env.example             # Template for environment variables
+├─ requirements.txt
+├─ README.md                # ← you are reading this file
+└─ pyproject.toml           # (optional) build metadata
+```
 
 ---
 
 ## Testing
 
-The repository includes a small test suite based on **pytest**.
+The repository includes a minimal test suite based on **pytest**.
 
 ```bash
-pip install pytest
-pytest
+pytest -q
 ```
 
 Tests cover:
-- Retriever integration
-- Prompt templating
-- API response shape
+- Vector store loading
+- Retrieval logic
+- End‑to‑end conversation flow (mocked LLM)
+
+Feel free to add more tests for edge cases or new features.
 
 ---
 
 ## Contributing
 
-Contributions are welcome!  Follow these steps:
+Contributions are welcome! Follow these steps:
 
-1. **Fork** the repository.
-2. Create a feature branch: `git checkout -b feature/awesome-feature`.
-3. Make your changes and ensure the test suite passes.
-4. Submit a **Pull Request** with a clear description of the change.
-5. Follow the existing code style (Black, isort, flake8).
+1. **Fork** the repository and **clone** your fork.
+2. Create a **feature branch**: `git checkout -b feature/your‑feature`.
+3. Install the development dependencies:
+   ```bash
+   pip install -r dev-requirements.txt
+   ```
+4. Make your changes, ensuring that the code passes `pytest` and complies with **flake8**/`black` formatting.
+5. Open a **Pull Request** targeting the `main` branch. Provide a clear description of the change and reference any related issues.
 
-Please read the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+Please read the full [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on coding standards, commit messages, and the review process.
 
 ---
 
 ## License
 
 This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgements
+
+- **LangChain** – the framework that makes composable LLM applications easy.
+- The LangChain community for examples and best‑practice patterns.
+- The open‑source contributors of FAISS, FastAPI, and related tooling.

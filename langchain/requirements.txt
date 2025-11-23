@@ -1,4 +1,0 @@
-llama-index
-langchain
-faiss-cpu
-openai

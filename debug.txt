@@ -1,0 +1,2 @@
+fix issues: 
+- The retrieval tool doesn't get confirmed and ready for use on the first attempt which affects the UE!

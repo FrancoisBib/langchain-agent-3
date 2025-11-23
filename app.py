@@ -40,7 +40,7 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 from openai._legacy_response import HttpxBinaryResponseContent
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-# Load API keys from Hugging Face secrets
+# Load API keys 
 try:
     os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
     os.environ["BING_SUBSCRIPTION_KEY"] = st.secrets.get("BING_SUBSCRIPTION_KEY", "")

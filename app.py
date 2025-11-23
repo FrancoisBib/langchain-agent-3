@@ -1,4 +1,3 @@
-# ref: https://github.com/twy80/LangChain_llm_Agent/tree/main
 import streamlit as st
 import os, base64, re, requests, datetime, time, json
 import matplotlib.pyplot as plt
